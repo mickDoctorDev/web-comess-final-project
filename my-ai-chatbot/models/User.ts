@@ -5,6 +5,8 @@ export interface IUser extends Document {
   passwordHash: string;
   salt: string;
   role: string;
+  dailyQuota: number;
+  lastMessageDate?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +17,8 @@ const UserSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     salt: { type: String, required: true },
     role: { type: String, default: 'user', enum: ['user', 'admin'] },
+    dailyQuota: { type: Number, default: 0 },
+    lastMessageDate: { type: Date },
   },
   { timestamps: true }
 );

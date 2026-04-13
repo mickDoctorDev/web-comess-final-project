@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { connectToDatabase } from '@/lib/mongodb';
 import ChatHistory from '@/models/ChatHistory';
+import User from '@/models/User';
 
 import { cookies } from 'next/headers';
 
@@ -22,11 +23,35 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Message is required' }, { status: 400 });
         }
 
+        await connectToDatabase();
+        // ตรวจสอบโควต้า
+        if (userId) {
+            const user = await User.findById(userId);
+            if (user) {
+                const today = new Date();
+                const isSameDay = user.lastMessageDate &&
+                    user.lastMessageDate.getDate() === today.getDate() &&
+                    user.lastMessageDate.getMonth() === today.getMonth() &&
+                    user.lastMessageDate.getFullYear() === today.getFullYear();
+
+                if (isSameDay) {
+                    if (user.dailyQuota >= 20 && user.role !== 'admin') {
+                        return NextResponse.json({ error: 'คุณใช้โควต้าคุยแชทครบ 20 ครั้งของวันนี้แล้ว กรุณากลับมาใหม่ในวันพรุ่งนี้ครับ' }, { status: 429 });
+                    }
+                    user.dailyQuota += 1;
+                } else {
+                    user.dailyQuota = 1;
+                    user.lastMessageDate = today;
+                }
+                await user.save();
+            }
+        }
+
         // 1. เรียกใช้งาน Gemini API
         // เพิ่ม System Instruction บังคับให้ AI เล่นบทบาทและตอบเฉพาะเรื่องที่ระบุ
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
-            systemInstruction: "คุณคือผู้เชี่ยวชาญเฉพาะทางในเรื่อง เครื่องใช้ไฟฟ้า เสนอคำตอบและให้ความช่วยเหลือเฉพาะเรื่องนี้เท่านั้น หากผู้ใช้ถามเรื่องอื่น ไม่ต้องตอบ ให้ตอบปฏิเสธอย่างสุภาพว่าคุณถูกสร้างมาสำหรับเรื่องนี้เท่านั้น ถ้าตอบคำถามได้ข้อให้ตอบไม่เกิน100อักษร และไม่เกิน3บรรทัด"
+            systemInstruction: "คุณคือผู้เชี่ยวชาญเฉพาะทางในเรื่อง เครื่องใช้ไฟฟ้าหรืออุปกรณ์อิเล็กทรอนิกส์ในสินค้าที่ลงขายในช่องขาย เสนอคำตอบและให้ความช่วยเหลือเฉพาะเรื่องนี้เท่านั้น หากผู้ใช้ถามเรื่องอื่น ไม่ต้องตอบ ให้ตอบปฏิเสธอย่างสุภาพว่าคุณถูกสร้างมาสำหรับเรื่องนี้เท่านั้น ถ้าตอบคำถามได้ข้อให้ตอบไม่เกิน100อักษร และไม่เกิน3บรรทัด แต่ให้ยกเว้นถ้ามีการถามผู้พัฒนา ซึ่งผู้พัฒนาโดย นาย นพวรรธน์ หล่อยิ่งยงไพศาล 6730259021 คณะวิศวกรรมศาสตร์"
         });
 
         // ส่งข้อความไปหา Gemini
@@ -34,7 +59,6 @@ export async function POST(req: Request) {
         const aiResponse = result.response.text();
 
         // 2. บันทึกข้อมูลลง MongoDB (ทำคู่ขนานไปเลย)
-        await connectToDatabase();
 
         // สมมติว่านี่คือการแชทครั้งแรก (ยังไม่มี chatId ส่งมา)
         let currentChat;
