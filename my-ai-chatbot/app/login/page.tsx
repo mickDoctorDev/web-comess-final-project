@@ -28,7 +28,7 @@ export default function LoginPage() {
 
       if (res.ok) {
         // หากล็อกอินสำเร็จ ให้รีเฟรชหน้าแล้วไปที่หน้าหลัก
-        window.location.href = "/";
+        window.location.href = "/dashboard";
       } else {
         setError(data.error || "เข้าสู่ระบบไม่สำเร็จ");
       }
@@ -92,6 +92,20 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
+
+      {/* Footer / Credits */}
+      <footer className="mt-8 pb-4 w-full flex flex-col items-center justify-center opacity-70 hover:opacity-100 transition-opacity">
+        <p className="text-gray-500 text-sm font-medium">
+          Developed by <span className="text-blue-600 font-bold">Noppawat Loryingyongphaisal</span>
+        </p>
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="w-4 h-[1px] bg-gray-300"></span>
+          <p className="text-gray-400 text-xs font-semibold tracking-wide uppercase flex items-center gap-1">
+            Powered by <span className="text-gray-800 bg-gray-200 px-1.5 py-0.5 rounded">Antigravity</span>
+          </p>
+          <span className="w-4 h-[1px] bg-gray-300"></span>
+        </div>
+      </footer>
     </div>
   );
 }
