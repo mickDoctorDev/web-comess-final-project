@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { connectToDatabase } from '@/lib/mongodb';
 import ChatHistory from '@/models/ChatHistory';
 import User from '@/models/User';
+import Product from '@/models/Product';
 
 import { cookies } from 'next/headers';
 
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
         }
 
         await connectToDatabase();
+        
         // ตรวจสอบโควต้า
         if (userId) {
             const user = await User.findById(userId);
@@ -47,11 +49,22 @@ export async function POST(req: Request) {
             }
         }
 
+        // ดึงข้อมูลสินค้าทั้งหมดจาก Database เพื่อนำไปเป็น Context ให้ AI
+        const products = await Product.find({}, 'name description price').lean() || [];
+        const productListString = products.map((p: any) => `- ${p.name} (ราคา ${p.price} บาท): ${p.description}`).join('\n');
+
         // 1. เรียกใช้งาน Gemini API
-        // เพิ่ม System Instruction เพื่อให้ AI ตอบคำถามได้ครอบคลุมเกี่ยวกับเว็บไซต์ทั้งหมด
+        // เพิ่ม System Instruction เพื่อให้ AI ตอบคำถามได้ครอบคลุมเกี่ยวกับเว็บไซต์ทั้งหมดและมีข้อมูลสินค้าปัจจุบัน
+        const systemInstructionStr = `คุณคือ AI Assistant ประจำเว็บไซต์ Noppawat Company บริการของบริษัทมีทั้งเครื่องใช้ไฟฟ้า อุปกรณ์อิเล็กทรอนิกส์ บริการแจ้งซ่อม และสินค้าต่างๆ คุณสามารถให้ความช่วยเหลือตอบคำถามได้ทั้งหมดเกี่ยวกับเว็บไซต์นี้รวมถึงสินค้าและการบริการต่างๆ หากผู้ใช้ถามเรื่องอื่นคุณสามารถแนะนำและตอบได้ตามความคุ้นเคยอย่างสุภาพ ให้ตอบคำถามอย่างสุภาพและกระชับ ไม่เกิน 3 บรรทัด แต่ให้ยกเว้นถ้ามีการถามถึงผู้พัฒนา ซึ่งพัฒนาระบบโดย นาย นพวรรธน์ หล่อยิ่งยงไพศาล 6730259021 คณะวิศวกรรมศาสตร์
+
+ข้อมูลสินค้าที่มีจำหน่ายในคลังของเรา (อัปเดตแบบเรียลไทม์):
+${productListString || 'ขณะนี้ยังไม่มีสินค้าในระบบ'}
+
+เมื่อผู้ใช้อยากรู้เกี่ยวกับสินค้า หรือค้นหาสินค้า ให้คุณอิงข้อมูลจากรายการสินค้านี้เพื่อตอบได้เลย`;
+
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
-            systemInstruction: "คุณคือ AI Assistant ประจำเว็บไซต์ Noppawat Company บริการของบริษัทมีทั้งเครื่องใช้ไฟฟ้า อุปกรณ์อิเล็กทรอนิกส์ บริการแจ้งซ่อม และสินค้าต่างๆ คุณสามารถให้ความช่วยเหลือตอบคำถามได้ทั้งหมดเกี่ยวกับเว็บไซต์นี้รวมถึงสินค้าและการบริการต่างๆ หากผู้ใช้ถามเรื่องอื่นคุณสามารถแนะนำและตอบได้ตามความคุ้นเคยอย่างสุภาพ ให้ตอบคำถามอย่างสุภาพและกระชับ ไม่เกิน 3 บรรทัด แต่ให้ยกเว้นถ้ามีการถามถึงผู้พัฒนา ซึ่งพัฒนาระบบโดย นาย นพวรรธน์ หล่อยิ่งยงไพศาล 6730259021 คณะวิศวกรรมศาสตร์"
+            systemInstruction: systemInstructionStr
         });
 
         // ส่งข้อความไปหา Gemini
