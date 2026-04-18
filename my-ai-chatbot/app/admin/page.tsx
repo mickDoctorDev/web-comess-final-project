@@ -156,7 +156,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-4 mb-4">
-          <Link href="/" className="p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 transition">
+          <Link href="/dashboard" className="p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 transition">
             <ArrowLeft className="w-6 h-6 text-gray-600" />
           </Link>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
